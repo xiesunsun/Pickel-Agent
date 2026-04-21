@@ -1,7 +1,7 @@
 import asyncio
 from types import SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from myopenclaw.conversations.message import (
     MessageRole,
@@ -13,6 +13,25 @@ from myopenclaw.conversations.message import (
 from myopenclaw.providers.anthropic import AnthropicProvider
 from myopenclaw.shared.generation import FinishReason, GenerateRequest
 from myopenclaw.tools.base import ToolSpec
+
+
+class FakeAsyncMessageStream:
+    def __init__(self, final_message) -> None:
+        self.final_message = final_message
+
+    async def get_final_message(self):
+        return self.final_message
+
+
+class FakeAsyncMessageStreamManager:
+    def __init__(self, final_message) -> None:
+        self.final_message = final_message
+
+    async def __aenter__(self):
+        return FakeAsyncMessageStream(self.final_message)
+
+    async def __aexit__(self, exc_type, exc, exc_tb) -> None:
+        return None
 
 
 class AnthropicProviderTests(unittest.TestCase):
@@ -148,36 +167,38 @@ class AnthropicProviderTests(unittest.TestCase):
             max_output_tokens=2048,
             provider_options={"thinking": "xhigh"},
         )
-        create = AsyncMock(
-            return_value=SimpleNamespace(
-                id="msg-1",
-                model="claude-opus-4-7-20250421",
-                stop_reason="tool_use",
-                usage=SimpleNamespace(
-                    input_tokens=11,
-                    output_tokens=7,
-                    cache_creation_input_tokens=2,
-                    cache_read_input_tokens=3,
-                ),
-                content=[
-                    SimpleNamespace(
-                        type="thinking",
-                        thinking="internal",
-                        signature="sig-1",
+        stream = Mock(
+            return_value=FakeAsyncMessageStreamManager(
+                SimpleNamespace(
+                    id="msg-1",
+                    model="claude-opus-4-7-20250421",
+                    stop_reason="tool_use",
+                    usage=SimpleNamespace(
+                        input_tokens=11,
+                        output_tokens=7,
+                        cache_creation_input_tokens=2,
+                        cache_read_input_tokens=3,
                     ),
-                    SimpleNamespace(type="text", text="I'll use a tool."),
-                    SimpleNamespace(
-                        type="tool_use",
-                        id="tool-1",
-                        name="echo",
-                        input={"text": "hello"},
-                    ),
-                ],
+                    content=[
+                        SimpleNamespace(
+                            type="thinking",
+                            thinking="internal",
+                            signature="sig-1",
+                        ),
+                        SimpleNamespace(type="text", text="I'll use a tool."),
+                        SimpleNamespace(
+                            type="tool_use",
+                            id="tool-1",
+                            name="echo",
+                            input={"text": "hello"},
+                        ),
+                    ],
+                )
             )
         )
         provider.client = SimpleNamespace(
             messages=SimpleNamespace(
-                create=create,
+                stream=stream,
                 count_tokens=AsyncMock(),
             )
         )
@@ -220,7 +241,7 @@ class AnthropicProviderTests(unittest.TestCase):
             result.provider_thinking_blocks,
         )
 
-        kwargs = create.await_args.kwargs
+        kwargs = stream.call_args.kwargs
         self.assertEqual("claude-opus-4-7", kwargs["model"])
         self.assertEqual(2048, kwargs["max_tokens"])
         self.assertEqual("You are Pickle.", kwargs["system"])
@@ -244,18 +265,20 @@ class AnthropicProviderTests(unittest.TestCase):
             model="claude-sonnet-4-0",
             temperature=0.3,
         )
-        create = AsyncMock(
-            return_value=SimpleNamespace(
-                id="msg-1",
-                model="claude-sonnet-4-0",
-                stop_reason="end_turn",
-                usage=None,
-                content=[SimpleNamespace(type="text", text="done")],
+        stream = Mock(
+            return_value=FakeAsyncMessageStreamManager(
+                SimpleNamespace(
+                    id="msg-1",
+                    model="claude-sonnet-4-0",
+                    stop_reason="end_turn",
+                    usage=None,
+                    content=[SimpleNamespace(type="text", text="done")],
+                )
             )
         )
         provider.client = SimpleNamespace(
             messages=SimpleNamespace(
-                create=create,
+                stream=stream,
                 count_tokens=AsyncMock(),
             )
         )
@@ -269,7 +292,7 @@ class AnthropicProviderTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual(0.3, create.await_args.kwargs["temperature"])
+        self.assertEqual(0.3, stream.call_args.kwargs["temperature"])
 
     def test_count_request_tokens_uses_matching_request_shape(self) -> None:
         provider = AnthropicProvider(

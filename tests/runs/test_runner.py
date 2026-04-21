@@ -38,6 +38,16 @@ class StubProvider(BaseLLMProvider):
         return self.responses.pop(0)
 
 
+class HangingProvider(BaseLLMProvider):
+    @classmethod
+    def from_config(cls, config: ModelConfig) -> "HangingProvider":
+        return cls()
+
+    async def generate(self, request: GenerateRequest) -> GenerateResult:
+        await asyncio.sleep(60)
+        raise AssertionError("generate should time out before finishing")
+
+
 class DelayEchoTool(BaseTool):
     spec = ToolSpec(
         name="echo",
@@ -405,6 +415,62 @@ class ReActStrategyTests(unittest.IsolatedAsyncioTestCase):
             [message.role.value for message in session.messages],
         )
         self.assertEqual("hello", session.messages[0].content)
+
+    async def test_runner_applies_provider_timeout_seconds_to_generate(self) -> None:
+        agent = Agent(
+            agent_id="Pickle",
+            workspace_path=Path("/tmp/pickle"),
+            behavior_path=Path("/tmp/pickle/AGENT.md"),
+            behavior_instruction="You are Pickle.",
+            model_config=ModelConfig(
+                provider="anthropic",
+                model="claude-jupiter-v1-p",
+                provider_options={"timeout_seconds": 0.01},
+            ),
+            tool_ids=[],
+        )
+        coordinator = AgentCoordinator(
+            strategy=ReActStrategy(),
+            context=AgentRuntimeContext(
+                agent=agent,
+                provider=HangingProvider(),
+                tools=[],
+            ),
+        )
+        session = Session.create(agent_id="Pickle", session_id="session-1")
+
+        with self.assertRaises(TimeoutError):
+            await coordinator.run_turn(
+                agent=agent,
+                session=session,
+                user_text="hello",
+            )
+
+        self.assertEqual(["user"], [message.role.value for message in session.messages])
+
+    def test_runner_uses_default_provider_timeout_when_not_configured(self) -> None:
+        agent = Agent(
+            agent_id="Pickle",
+            workspace_path=Path("/tmp/pickle"),
+            behavior_path=Path("/tmp/pickle/AGENT.md"),
+            behavior_instruction="You are Pickle.",
+            model_config=ModelConfig(
+                provider="anthropic",
+                model="claude-jupiter-v1-p",
+                provider_options={},
+            ),
+            tool_ids=[],
+        )
+        context = AgentRuntimeContext(
+            agent=agent,
+            provider=StubProvider(),
+            tools=[],
+        )
+
+        self.assertEqual(
+            600.0,
+            ReActStrategy._provider_timeout_seconds(context),
+        )
 
 
 if __name__ == "__main__":

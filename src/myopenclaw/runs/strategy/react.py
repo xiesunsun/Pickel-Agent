@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import time
 from dataclasses import dataclass
+from numbers import Real
 from uuid import uuid4
 
 from myopenclaw.conversations.message import (
@@ -31,6 +32,8 @@ class ToolCallOutcome:
 class ReActStrategy(ExecutionStrategy):
     """Reason+Act (ReAct) execution strategy."""
 
+    DEFAULT_PROVIDER_TIMEOUT_SECONDS = 600.0
+
     def __init__(self, max_steps: int = 8) -> None:
         self.max_steps = max_steps
 
@@ -56,12 +59,13 @@ class ReActStrategy(ExecutionStrategy):
                 ),
             )
             start = time.perf_counter()
-            result = await context.provider.generate(
-                GenerateRequest(
+            result = await self._generate_with_optional_timeout(
+                context=context,
+                request=GenerateRequest(
                     system_instruction=context.agent.system_instruction or None,
                     messages=prompt_messages,
                     tools=[tool.spec for tool in context.tools],
-                )
+                ),
             )
             elapsed_ms = round((time.perf_counter() - start) * 1000)
             metadata = result.metadata or MessageMetadata(
@@ -143,6 +147,34 @@ class ReActStrategy(ExecutionStrategy):
             ),
         )
         return result
+
+    async def _generate_with_optional_timeout(
+        self,
+        *,
+        context: AgentRuntimeContext,
+        request: GenerateRequest,
+    ) -> GenerateResult:
+        timeout_seconds = self._provider_timeout_seconds(context)
+        if timeout_seconds is None:
+            return await context.provider.generate(request)
+        return await asyncio.wait_for(
+            context.provider.generate(request),
+            timeout=timeout_seconds,
+        )
+
+    @staticmethod
+    def _provider_timeout_seconds(context: AgentRuntimeContext) -> float | None:
+        timeout_seconds = context.agent.model_config.provider_options.get(
+            "timeout_seconds"
+        )
+        if timeout_seconds is None:
+            return ReActStrategy.DEFAULT_PROVIDER_TIMEOUT_SECONDS
+        if not isinstance(timeout_seconds, Real):
+            return ReActStrategy.DEFAULT_PROVIDER_TIMEOUT_SECONDS
+        timeout_value = float(timeout_seconds)
+        if timeout_value <= 0:
+            return ReActStrategy.DEFAULT_PROVIDER_TIMEOUT_SECONDS
+        return timeout_value
 
     async def _execute_tool_batch(
         self,

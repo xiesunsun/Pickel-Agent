@@ -26,10 +26,8 @@ providers:
       claude-jupiter-v1-p:
         api_base: https://api.anthropic.com
         max_input_tokens: 1000000
-        max_output_tokens: 64000
+        max_output_tokens: 60000
         provider_options:
-          timeout_seconds: 600
-          max_retries: 2
           thinking: xhigh
 
 agents:

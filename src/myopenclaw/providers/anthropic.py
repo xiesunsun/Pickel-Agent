@@ -53,9 +53,7 @@ class AnthropicProvider(BaseLLMProvider):
         )
 
     async def generate(self, request: GenerateRequest) -> GenerateResult:
-        response = await self.client.messages.create(
-            **self._build_create_params(request)
-        )
+        response = await self._create_streaming_message(request)
         tool_calls = self._extract_tool_calls(response)
         return GenerateResult(
             text=self._extract_text(response),
@@ -71,6 +69,12 @@ class AnthropicProvider(BaseLLMProvider):
             provider_thinking_blocks=self._extract_thinking_blocks(response),
             raw=response,
         )
+
+    async def _create_streaming_message(self, request: GenerateRequest) -> Any:
+        async with self.client.messages.stream(
+            **self._build_create_params(request)
+        ) as stream:
+            return await stream.get_final_message()
 
     async def count_request_tokens(self, request: GenerateRequest) -> int | None:
         try:

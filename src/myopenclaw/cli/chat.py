@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import traceback
 from pathlib import Path
 from typing import Awaitable, Callable
 
@@ -307,7 +308,7 @@ class ChatLoop:
                         start_index=start_index,
                     )
             except Exception as exc:
-                self._render_error_message(f"Request failed: {exc}")
+                self._render_error_message(traceback.format_exc().rstrip())
                 continue
 
             self._fallback_message_count += 1

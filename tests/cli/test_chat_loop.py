@@ -58,6 +58,19 @@ class SilentCoordinator:
         return GenerateResult(text="runtime reply")
 
 
+class ErrorCoordinator:
+    async def run_turn(
+        self,
+        *,
+        agent: Agent,
+        session: Session,
+        user_text: str,
+        event_handler=None,
+    ) -> GenerateResult:
+        session.append_user_message(user_text)
+        raise ValueError("boom")
+
+
 class StubToolCoordinator:
     async def run_turn(
         self,
@@ -374,6 +387,24 @@ class ChatLoopTests(unittest.IsolatedAsyncioTestCase):
         titles = [getattr(call.args[0], "title", None) for call in console.print.call_args_list]
         self.assertEqual(1, titles.count("Assistant"))
         self.assertNotIn("You", titles)
+
+    async def test_run_renders_full_traceback_when_turn_fails(self) -> None:
+        output = StringIO()
+        console = Console(file=output, force_terminal=False, width=120, record=True)
+        submitted_inputs = iter(["hello", "/exit"])
+        loop = ChatLoop(
+            agent=self._build_agent(),
+            coordinator=ErrorCoordinator(),
+            session=Session(session_id="session-1", agent_id="Pickle"),
+            console=console,
+            input_reader=lambda _: next(submitted_inputs),
+        )
+
+        await loop.run()
+
+        rendered = console.export_text()
+        self.assertIn("Traceback (most recent call last):", rendered)
+        self.assertIn("ValueError: boom", rendered)
 
     async def test_run_flushes_new_messages_after_turn(self) -> None:
         console = Mock()
