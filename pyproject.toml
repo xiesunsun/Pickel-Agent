@@ -3,12 +3,13 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "myopenclaw"
+name = "pickel-agent"
 version = "0.1.0"
-description = "An AI Agent Demo"
+description = "A local-first, highly extensible AI Agent runtime for coding and workspace automation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=0.96.0",
     "google-genai>=1.68.0",
     "pydantic>=2.12.5",
     "prompt-toolkit>=3.0.0",
@@ -20,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-myopenclaw = "myopenclaw.cli.main:app"
+pickel = "myopenclaw.cli.main:app"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

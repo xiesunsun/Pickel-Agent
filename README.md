@@ -1,218 +1,176 @@
-# MyOpenClaw
+<p align="center">
+  <img src="./.github/assets/pickel_agent_logo.png" alt="Pickel Agent Logo" width="360"/>
+</p>
 
-MyOpenClaw is a local-first, extensible agent runtime built for coding and workspace automation scenarios. It focuses on the core execution loop of an agent system: model invocation, tool calling, multi-turn session management, context construction, persistence, and controlled workspace operations.
+<h1 align="center">Pickel Agent</h1>
 
-The implementation is intentionally kept concrete and inspectable rather than being a prompt-only demo.
+<p align="center">
+  <strong>本地优先、高度可扩展的 AI 编码与工作空间自动化 Agent 运行期系统 (Runtime)</strong>
+</p>
 
-## What It Does
+<p align="center">
+  <a href="./README.md">中文</a> · <a href="./README.en.md">English</a>
+</p>
 
-- Runs an interactive CLI agent loop for local coding and automation tasks.
-- Supports a provider abstraction with a working Google Gemini integration.
-- Exposes 10+ built-in tools for directory listing, search, file reads/writes, exact replace, and persistent shell execution.
-- Persists sessions in SQLite and supports listing, resuming, and deleting prior sessions.
-- Builds prompt context from recent conversation turns and reports context usage in the CLI.
-- Supports optional OpenViking-backed session sync and session recall for longer-running workflows.
-- Includes focused tests around app assembly, config loading, session storage, runtime behavior, and shell/tool flows.
+---
 
-## Why I Built It
+**Pickel Agent** 是一个专为本地编码与工作空间自动化场景设计的**本地优先 (Local-First)、高度可扩展的 AI Agent 运行期系统 (Runtime)**。它专注于解决 AI 开发助手在本地落地时的核心运行问题：**工具的安全与受控执行、多轮持久化会话的管理、高保真度的 PTY 终端持久化、精准的上下文 Token 剪裁控制，以及云端协同同步。**
 
-I built MyOpenClaw to understand and implement the runtime concerns behind coding agents instead of stopping at API wrappers:
+与许多仅停留在提示词（Prompt-only）层面的演示不同，Pickel Agent 提供了工业级的本地 CLI 引擎和极其灵活的 Skills 插件系统，允许开发者直接使用 Python 快速构建并热插拔各类开发工具，无缝接入主流的大语言模型（如 Gemini、Claude）。
 
-- How tools are registered and executed safely.
-- How a multi-turn session is persisted and resumed.
-- How prompt context is assembled and bounded.
-- How shell state is preserved across turns.
-- How a local runtime can later sync to a remote memory/session service.
+---
 
-## Current Architecture
+## 核心主张与技术特色
 
-The codebase is organized around a few narrow modules:
+### 1. 绝不丢失上下文的 PTY 持久化终端
+传统 Agent 执行 Shell 命令往往是单次短暂的 `subprocess`，无法保留工作目录、环境变量及前置命令状态（如在执行 `npm install` 后无法在同状态下继续执行 `npm run dev`）。Pickel Agent 独创 PTY 驱动的持久化终端会话，使 AI Agent 能够像真人一样保持会话环境的连续性。
 
-- `agents`: agent metadata, behavior loading, and skill discovery.
-- `app`: the composition root that assembles config, runtime, sessions, tools, and integrations.
-- `cli`: interactive chat loop, context rendering, session commands, and terminal UX.
-- `config`: YAML-based application config with env var expansion.
-- `context`: recent-turn windowing and optional session recall injection.
-- `conversations`: message/session models and session service orchestration.
-- `persistence`: SQLite-backed session repository.
-- `providers`: model provider abstraction and Gemini implementation.
-- `runs`: turn coordinator, runtime context, ReAct strategy, and usage accounting.
-- `tools`: built-in file tools, persistent shell tools, policies, and registry.
-- `integrations/openviking`: optional remote session sync and session recall adapters.
+### 2. 离线沙箱与绝对安全受控的工具箱
+工具执行的安全至关重要。Pickel Agent 自带细粒度的工作空间访问控制策略（Full/Sandbox），提供列目录、内容检索、精准代码替换、增量写入等 10+ 种高安全性的内置工具，让 AI 在受控的目录中起效，杜绝破坏系统文件的隐患。
 
-## Key Capabilities
+### 3. 滑动窗口式上下文精细量化
+不再盲目地将冗长的多轮对话甚至庞大的工具输出全部塞给 LLM。Pickel Agent 会根据最新的对话轮次智能编排 Token 窗口，并可通过内建的 `/context` 命令行指令精细化观测与调优模型开销。
 
-### 1. Extensible agent runtime
+### 4. 极速可热插拔的 Python Skills 扩展
+内置模块化的 Skills 扩展系统，开发者只需简单编写 Python 逻辑和 Markdown 格式的说明，系统便会自动发现并动态注入到 Agent 的 Tool 注册表和系统 Prompt 中，无需繁琐的重新装配。
 
-The runtime resolves an agent from config, loads its behavior prompt, attaches a model configuration, and binds a selected tool set. The assembly layer keeps provider, tool, context, and persistence concerns separate so the runtime stays composable.
+### 5. 双端适配与 OpenViking 云端同步
+内置可选的 OpenViking 适配层，支持将本地会话消息与状态同步至远端服务，支持大跨度历史关联召回，打破本地运行与云端协作的藩篱。
 
-### 2. Multi-turn session persistence and resume
+---
 
-Each chat session is stored in SQLite under `.myopenclaw/sessions.db`. The CLI supports:
+## 核心功能视效演示
 
-- starting a new session
-- resuming a session by `--session-id`
-- listing recent sessions
-- deleting sessions
+### 1. 命令行交互与极速启动 (CLI Chat Loop & Agent Startup)
+直接通过命令行拉起流畅的 AI 交互终端，可随时根据配置文件与选择的 Agent 瞬间就绪。
+![极速启动](./.github/assets/pickel_agent_start.png)
 
-This makes longer coding workflows inspectable and recoverable instead of transient.
+### 2. 强大的 ReAct 协同思维闭环 (ReAct Reasoning Pattern)
+Agent 在后台清晰地展示 思考 (Thought) -> 决策 (Action) -> 观测成果 (Observation) 的完整 ReAct 执行轨迹，过程透明、掌控感极强。
+![ReAct 协同闭环](./.github/assets/pickel_agent_react.png)
 
-### 3. Context window management
+### 3. 内置高能开发工具链 (Built-in Development Tools)
+安全、受控地扫描目录、内容过滤，并支持高精度的 exact-replace 代码改写工具，确保每一步代码变更都精准无误。
+![内置开发工具](./.github/assets/pickel_agent_builtin_tools.png)
 
-Prompt construction is based on recent user turns plus their associated assistant/tool activity, rather than replaying the full session blindly. The CLI also exposes a `/context` command to inspect how much context is currently being sent.
+### 4. 创新的多轮会话状态与 Token 精准控制 (Session & Context Tracking)
+随时通过内建快捷命令控制 Token 使用开销、追溯历史版本、查看当前的 Token 发送窗口大小。
+![会话与上下文管理](./.github/assets/pickel_agent_session_context_command.png)
 
-### 4. Controlled workspace operations
+### 5. 模块化 Skill 技能扩展 (Extensible Skills)
+动态加载个性化工具、技能包与特殊规则，无缝加载团队沉淀的最佳实践，为特定项目定制专属 Agent。
+![模块化 Skill](./.github/assets/pickel_agent_skill.png)
 
-MyOpenClaw includes built-in file and shell tools commonly needed by a coding agent:
+---
 
-- `list_directory`
-- `glob_search`
-- `grep_search`
-- `read_file`
-- `read_many_files`
-- `replace`
-- `write_file`
-- `shell_exec`
-- `shell_restart`
-- `shell_close`
-- `echo`
+## 快速开始
 
-For file operations, the runtime supports workspace-bounded access control as well as a full-access mode when explicitly configured.
-
-### 5. Persistent shell state
-
-Shell execution is backed by a PTY-based persistent shell session. This allows the agent to preserve working directory and shell process state across multiple commands, which is important for real coding workflows.
-
-### 6. Optional OpenViking integration
-
-The current branch also adds optional OpenViking support for:
-
-- syncing local session messages to a remote service
-- committing pending session state based on time/turn thresholds
-- recalling related prior context into the next prompt
-
-These capabilities are configuration-driven and can be disabled for fully local usage.
-
-## Repository Status
-
-This project is under active development. The current implementation already covers the runtime backbone needed for a practical local agent CLI, while a few areas are still intentionally evolving:
-
-- broader provider support beyond Gemini
-- richer skill/runtime packaging
-- more advanced memory and retrieval strategies
-- additional ergonomics for agent configuration and tool composition
-
-## Quick Start
-
-### Requirements
-
+### 前提要求
 - Python 3.12+
-- a Gemini API key if you want to run the default provider
+- Gemini 或 Anthropic API 秘钥（对应模型驱动）
 
-### Install
-
+### 1. 安装与同步
 ```bash
-git clone git@github.com:xiesunsun/MyOpenClaw.git
-cd MyOpenClaw
+# 克隆仓库
+git clone https://github.com/xiesunsun/Pickel-Agent.git
+cd Pickel-Agent
+
+# 使用 uv 进行依赖管理与同步
 uv sync
 ```
 
-### Configure
-
-The project reads configuration from `config.yaml`. Sensitive values can be injected through environment variables.
-
-Example:
-
+### 2. 注入凭证与配置
+项目从根目录的 `config.yaml` 读取系统配置。您可以将敏感值通过环境变量进行注入。
 ```bash
-export OPENVIKING_AGENT_ID="..."
-export OPENVIKING_BASE_URL="..."
-export OPENVIKING_ACCOUNT_ID="..."
-export OPENVIKING_USER_ID="..."
-export OPENVIKING_USER_KEY="..."
+# Gemini 凭证配置
+export GEMINI_API_KEY="your-gemini-api-key"
+
+# Anthropic 凭证配置
+export ANTHROPIC_API_KEY_PICKLE="your-anthropic-api-key"
+```
+可在 `config.yaml` 中根据需求调整默认大语言模型、安全文件访问级别以及工具白名单。
+
+### 3. 运行交互会话
+```bash
+# 启动默认 Agent 交互终端
+uv run pickel chat --config config.yaml
+
+# 指定特定的 Agent (例如：Pickle) 启动
+uv run pickel chat --config config.yaml --agent Pickle
+
+# 查看历史会话列表
+uv run pickel sessions --config config.yaml
+
+# 恢复特定的历史会话
+uv run pickel chat --config config.yaml --session-id <session-id>
+
+# 删除失效会话
+uv run pickel sessions delete <session-id> --config config.yaml
 ```
 
-For Gemini credentials, either:
+---
 
-- use the environment variable convention supported by `google-genai`
-- or set `api_key` on the selected provider model config in `config.yaml`
+## CLI 终端快捷指令
 
-The default config already shows the expected structure for:
+在交互会话中，您可以使用以下斜杠命令进行辅助控制：
 
-- default model selection
-- provider/model settings
-- agent workspace and behavior prompt
-- tool allowlist
-- file access mode
-- OpenViking toggles
+- `/help` - 显示终端指令帮助列表
+- `/context` - 显示当前上下文 Token 消耗与窗口大小
+- `/session` - 获取当前多轮会话详细运行状态摘要
+- `/clear` - 清空终端屏幕
+- `/exit` - 安全保存状态并关闭终端会话
 
-### Run
+---
 
-Start a chat session:
+## 技术栈
 
-```bash
-uv run myopenclaw chat --config config.yaml
+- **Language Core**: Python 3.12+ (使用 `uv` 闪电级依赖管理器驱动)
+- **LLM Drivers**: Google GenAI (Gemini 3.0/3.1), Anthropic SDK (Claude/Jupiter)
+- **TUI & Console**: Prompt-Toolkit, Typer, Rich
+- **Sync Integration**: OpenViking (可选云端/远端适配器)
+- **Local Persistence**: SQLite 数据库 (本地存储 `.myopenclaw/sessions.db`)
+
+---
+
+## 项目结构
+
+```
+src/
+  myopenclaw/               # 核心执行包 (对应 pickel 命令行)
+    agents/                 # Agent 行为 prompt 装载与技能检索
+    app/                    # 应用程序配置及启动装配根节点 (Composition Root)
+    cli/                    # 命令行交互层逻辑与终端 TUI 渲染
+    config/                 # YAML 格式系统配置文件加载与环境变量解析
+    context/                # 精准 Token 滑动窗口剪裁与编排
+    conversations/          # 会话实体抽象模型与持久化层接口
+    persistence/            # 基于 SQLite 的会话存储库具体实现
+    providers/              # Gemini 与 Anthropic 大语言模型底层驱动与选项封装
+    runs/                   # turn 协调调度器与 ReAct 执行策略
+    tools/                  # 受控文件系统工具与持久化 PTY 终端 Shell 工具集
+    integrations/openviking # 云同步与 session recall 可选扩展适配层
+tests/                      # 覆盖 app 装配、配置读取、会话持久化与 shell 操作的完整测试集
 ```
 
-Run with a specific agent:
+---
 
-```bash
-uv run myopenclaw chat --config config.yaml --agent Pickle
-```
+## 测试与验证
 
-Resume a prior session:
-
-```bash
-uv run myopenclaw chat --config config.yaml --session-id <session-id>
-```
-
-List recent sessions:
-
-```bash
-uv run myopenclaw sessions --config config.yaml
-```
-
-Delete a session:
-
-```bash
-uv run myopenclaw sessions delete <session-id> --config config.yaml
-```
-
-## CLI Commands
-
-Inside the interactive chat loop:
-
-- `/help` shows available commands
-- `/context` shows current context usage
-- `/session` shows current session summary
-- `/clear` redraws the screen
-- `/exit` closes the session cleanly
-
-## Testing
-
-The repository contains test coverage for the runtime backbone, including:
-
-- app assembly
-- config/env expansion
-- chat loop and session CLI commands
-- session lifecycle and storage mapping
-- SQLite persistence
-- runtime event flow and runner behavior
-- shell state handling
-- OpenViking integration paths
-
-Run tests with:
-
+项目包含针对运行期、持久层和持久 Shell 工具流的完整单元测试。运行测试以确认环境健康度：
 ```bash
 uv run pytest
 ```
 
-## Roadmap
+---
 
-- add more provider backends behind the existing abstraction
-- improve memory/retrieval quality beyond recent-turn windows
-- expand reusable skills and agent packaging
-- harden release/CI workflows for public usage
+## 发展路线图 (Roadmap)
 
-## License
+- [ ] 支持更丰富的本地多模态解析工具 (如 PDF 提取与图片处理)
+- [ ] 结合本地向量数据库 (Vector DB) 提供更深度、长周期的本地长记忆检索
+- [ ] 适配更多的开源本地模型驱动 (如 Ollama, llama.cpp)
+- [ ] 开发轻量级的 React 本地 Web UI 协同控制面板
 
-Licensed under Apache-2.0. See `LICENSE`.
+---
+
+## 许可证
+
+本项目基于 [Apache-2.0](./LICENSE) 许可证开源。
