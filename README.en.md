@@ -28,14 +28,15 @@ Standard agents run shell commands in isolated, transient subprocesses, failing 
 ### 2. Sandbox-Safe Controlled Tools
 Security is a primary concern for local coding agents. Pickel Agent has a built-in workspace file service with fine-grained access control (Full/Sandbox levels). It comes with 10+ secure file, search, precise edit (exact-replace), and command execution tools to keep the agent bounded within the targeted workspace directory.
 
-### 3. Smart Sliding Context Quantization
-Blindly sending the entire multi-turn history and massive tool outputs to LLMs is expensive and inefficient. Pickel Agent intelligently bounds the context token window based on sliding conversation turns. The built-in `/context` command allows you to inspect, measure, and optimize token usage in real-time.
+### 3. Dual-Layer Context Orchestration via /context & OpenViking
+Managing token usage and history recall is critical for long-running coding sessions. Pickel Agent introduces an innovative dual-layer context management framework:
+- **Local Micro-Observability (`/context`)**: Leverages smart sliding windows to slice prompt history. Inside the CLI, developers can execute the `/context` command to diagnose the precise token size, usage, and boundary window currently sent to the model.
+- **Cloud Macro-Sync & Semantic Recall (`OpenViking`)**: Fully integrates with OpenViking sync protocols. It automatically commits session progress based on configurable time or turn thresholds, and performs semantic search to recall relevant historical session context, overcoming local memory limits.
 
-### 4. Plug-and-Play Python Skills
-With a modular, hot-pluggable Skills system, you can easily register custom tools and behavior prompts by simply writing Python classes and Markdown descriptions. They are dynamically discovered and injected into the tool registry and system instructions without complex recompilations.
-
-### 5. Dual-Adapters & OpenViking Cloud Sync
-An optional OpenViking sync layer lets you backup local session events, commit states, and recall relevant historic context into the prompt, bridging the gap between local speed and collaborative cloud intelligence.
+### 4. Multi-Agent Isolation & Plug-and-Play Skills Ecosystem
+To solve complex, multi-layered automation tasks, Pickel Agent natively establishes a robust multi-agent paradigm:
+- **Strict Multi-Agent Isolation**: Configure distinct Agents (e.g., `Pickle`, `Architect`) in `config.yaml` with their own system prompts, workspace paths, custom tool registries, and custom model provider drivers. Boot any target sandbox instantly via `--agent AgentName`.
+- **Hot-Pluggable Python Skills**: Effortlessly extend your agent's capabilities by writing Python scripts and Markdown rule definitions. Skills are auto-discovered, packaged, and dynamically registered as system tools on the fly.
 
 ---
 
