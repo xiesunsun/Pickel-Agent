@@ -24,6 +24,7 @@ providers:
   anthropic:
     models:
       claude-jupiter-v1-p:
+        api_key: ${ANTHROPIC_API_KEY_PICKLE}
         api_base: https://api.anthropic.com
         max_input_tokens: 1000000
         max_output_tokens: 60000
