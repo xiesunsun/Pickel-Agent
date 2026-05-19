@@ -28,14 +28,15 @@
 ### 2. 离线沙箱与绝对安全受控的工具箱
 工具执行的安全至关重要。Pickel Agent 自带细粒度的工作空间访问控制策略（Full/Sandbox），提供列目录、内容检索、精准代码替换、增量写入等 10+ 种高安全性的内置工具，让 AI 在受控的目录中起效，杜绝破坏系统文件的隐患。
 
-### 3. 滑动窗口式上下文精细量化
-不再盲目地将冗长的多轮对话甚至庞大的工具输出全部塞给 LLM。Pickel Agent 会根据最新的对话轮次智能编排 Token 窗口，并可通过内建的 `/context` 命令行指令精细化观测与调优模型开销。
+### 3. 基于 /context 与 OpenViking 的智能上下文协同管理
+在长对话或大型编码任务中，Token 的开销与历史召回的质量至关重要。Pickel Agent 提供创新的双层上下文管理机制：
+- **本地微观观测 (`/context`)**：提供极佳的 Token 滑动窗口编排算法，避免盲目发送历史全文；用户在 CLI 终端中可随时通过 `/context` 快捷指令诊断当前的 Token 消耗大小及精确窗口边界，做到开销完全透明可控。
+- **云端宏观同步与关联召回 (`OpenViking`)**：内置可选的 OpenViking 适配层。不仅支持将本地会话实时同步至远端，还支持基于时间和对话轮次（Turn Threshold）的会话状态自动提报提交，并能在新轮次中利用语义检索自动召回（Session Recall）大跨度的关联历史上下文，打破单机内存屏障。
 
-### 4. 极速可热插拔的 Python Skills 扩展
-内置模块化的 Skills 扩展系统，开发者只需简单编写 Python 逻辑和 Markdown 格式的说明，系统便会自动发现并动态注入到 Agent 的 Tool 注册表和系统 Prompt 中，无需繁琐的重新装配。
-
-### 5. 双端适配与 OpenViking 云端同步
-内置可选的 OpenViking 适配层，支持将本地会话消息与状态同步至远端服务，支持大跨度历史关联召回，打破本地运行与云端协作的藩篱。
+### 4. 强大的多 Agent 隔离与可插拔 Skills 架构
+应对复杂、多层次的自动化任务，Pickel Agent 原生支持多 Agent 生态与技能隔离：
+- **多 Agent 并存与环境隔离**：在 `config.yaml` 中，您可以为不同职责的 Agent（例如编码专家 `Pickle`、架构师 `Architect` 等）独立指定其专有的工作空间路径（Workspace Path）、系统提示词（System Prompt）、受控工具白名单、以及不同大模型 Provider 驱动。通过 `--agent` 参数即可一键拉起独立沙箱，实现多角色快速切换。
+- **热插拔 Skills 技能树**：开发者只需简单编写 Python 逻辑和 Markdown 规则说明，模块化 Skills 即可被特定 Agent 自动发现并动态注入其 Tool 注册表和 System Instructions 中，极易扩展和生态复用。
 
 ---
 

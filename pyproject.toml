@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pickel-agent"
 version = "0.1.0"
-description = "A local-first, highly extensible AI Agent runtime for coding and workspace automation"
+description = "本地优先、高度可扩展的 AI 编码与工作空间自动化 Agent 运行期系统。 | A local-first, highly extensible AI Agent runtime for coding and workspace automation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
